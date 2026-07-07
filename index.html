@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comet Karts</title>
+<style>
+  :root {
+    --hud-font: 'Segoe UI', 'Arial Black', Arial, sans-serif;
+    --accent: #ffd23f;
+  }
+
+  /* ---------- Touch Controls ---------- */
+  #touchControls {
+    position: fixed; inset: 0; pointer-events: none; z-index: 12;
+    display: none; /* shown via JS on touch devices */
+  }
+  #touchControls.active { display: block; }
+  .touch-zone { position: absolute; pointer-events: auto; }
+  .touch-stick-zone {
+    left: 10px; bottom: 10px; width: 180px; height: 180px;
+  }
+  .touch-stick-base {
+    width: 140px; height: 140px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+    border: 3px solid rgba(255,255,255,0.2);
+    position: absolute; left: 20px; bottom: 20px;
+  }
+  .touch-stick-knob {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,210,63,0.6), rgba(255,210,63,0.25));
+    border: 2px solid rgba(255,255,255,0.5);
+    position: absolute; left: 60px; bottom: 60px;
+    transform: translate(-50%, 50%);
+    transition: none;
+  }
+  .touch-btn-zone {
+    right: 10px; bottom: 10px;
+    display: flex; flex-direction: column; gap: 10px;
+    align-items: flex-end;
+  }
+  .touch-btn-row { display: flex; gap: 10px; }
+  .touch-btn {
+    width: 70px; height: 70px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+    border: 3px solid rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 900; color: rgba(255,255,255,0.8);
+    font-family: var(--hud-font);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  .touch-btn.pressed {
+    background: radial-gradient(circle at 35% 30%, rgba(255,210,63,0.4), rgba(255,210,63,0.15));
+    border-color: var(--accent);
+  }
+  .touch-btn.gas { width: 80px; height: 80px; font-size: 26px; }
+  .touch-btn.brake { width: 60px; height: 60px; font-size: 18px; }
+  .touch-btn-small {
+    width: 55px; height: 55px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: rgba(255,255,255,0.7);
+    font-family: var(--hud-font);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  .touch-top-btns {
+    position: absolute; right: 10px; top: 120px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  /* ---------- Mute Button ---------- */
+  .hud-mute {
+    position: absolute; right: 20px; top: 20px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(0,0,0,0.35); border: 2px solid rgba(255,255,255,0.3);
+    color: #fff; font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s; z-index: 11;
+    pointer-events: auto;
+  }
+  .hud-mute:hover { background: rgba(255,210,63,0.3); border-color: var(--accent); }
+  .hud-mute.muted { color: #ff5b5b; }
+
+  /* ---------- Speed Lines ---------- */
+  #speedLines {
+    position: fixed; inset: 0; pointer-events: none; z-index: 9;
+    opacity: 0; transition: opacity 0.2s;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(255,255,255,0.03) 100%);
+  }
+  #speedLines.active { opacity: 1; }
+  #speedLines .line {
+    position: absolute;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.15), transparent);
+    width: 2px;
+    animation: speedLine 0.3s linear infinite;
+  }
+  @keyframes speedLine {
+    from { transform: translateY(-100vh); }
+    to { transform: translateY(100vh); }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e1a; font-family: var(--hud-font); }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  /* ---------- generic overlay layers ---------- */
+  .layer { position: fixed; inset: 0; pointer-events: none; }
+  .layer.interactive { pointer-events: auto; }
+  .hidden { display: none !important; }
+
+  /* ---------- HUD ---------- */
+  #hud { z-index: 10; }
+  .hud-pos {
+    position: absolute; left: 26px; bottom: 22px;
+    font-size: 84px; font-weight: 900; font-style: italic;
+    color: #fff; -webkit-text-stroke: 3px #1a1a2e;
+    text-shadow: 0 4px 0 rgba(0,0,0,.35);
+    line-height: 1;
+  }
+  .hud-pos .suffix { font-size: 40px; }
+  .hud-pos.p1 { color: #ffd23f; } .hud-pos.p2 { color: #d8e4ff; } .hud-pos.p3 { color: #ff9d5c; }
+  .hud-lap {
+    position: absolute; left: 30px; top: 24px;
+    font-size: 28px; font-weight: 800; color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,.6);
+  }
+  .hud-timer {
+    position: absolute; left: 30px; top: 60px;
+    font-size: 22px; font-weight: 700; color: #cfe0ff;
+    text-shadow: 0 2px 4px rgba(0,0,0,.6);
+    font-variant-numeric: tabular-nums;
+  }
+  .hud-coins {
+    position: absolute; left: 30px; top: 92px;
+    font-size: 20px; font-weight: 700; color: #ffd23f;
+    text-shadow: 0 2px 4px rgba(0,0,0,.6);
+  }
+  .hud-item {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    width: 92px; height: 92px; border-radius: 18px;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.28), rgba(20,24,48,.85));
+    border: 4px solid rgba(255,255,255,.75);
+    box-shadow: 0 6px 18px rgba(0,0,0,.45), inset 0 0 22px rgba(120,160,255,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px; transition: transform .12s;
+  }
+  .hud-item.rolling { animation: itemPulse .18s infinite alternate; }
+  .hud-item .count {
+    position: absolute; right: -6px; bottom: -6px;
+    background: var(--accent); color: #222; font-size: 18px; font-weight: 900;
+    border-radius: 50%; width: 30px; height: 30px; line-height: 30px; text-align: center;
+    border: 2px solid #fff;
+  }
+  @keyframes itemPulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.07); } }
+  .hud-speed {
+    position: absolute; right: 200px; bottom: 26px;
+    font-size: 30px; font-weight: 900; font-style: italic; color: #fff;
+    text-shadow: 0 2px 6px rgba(0,0,0,.6); font-variant-numeric: tabular-nums;
+  }
+  .hud-speed .unit { font-size: 15px; color: #9fb4e8; }
+  #minimap {
+    position: absolute; right: 20px; bottom: 20px;
+    width: 170px; height: 170px; opacity: .92;
+  }
+  .hud-center {
+    position: absolute; top: 34%; left: 0; right: 0; text-align: center;
+    font-size: 92px; font-weight: 900; font-style: italic; color: #ffd23f;
+    -webkit-text-stroke: 3px #331e00; text-shadow: 0 6px 0 rgba(0,0,0,.3);
+    pointer-events: none;
+  }
+  .hud-msg {
+    position: absolute; top: 22%; left: 0; right: 0; text-align: center;
+    font-size: 52px; font-weight: 900; font-style: italic; color: #fff;
+    -webkit-text-stroke: 2px #16224d; text-shadow: 0 4px 0 rgba(0,0,0,.3);
+  }
+  .hud-wrongway {
+    position: absolute; top: 46%; left: 0; right: 0; text-align: center;
+    font-size: 40px; font-weight: 900; color: #ff5b5b;
+    text-shadow: 0 2px 8px rgba(0,0,0,.7);
+    animation: blink .5s infinite alternate;
+  }
+  @keyframes blink { from { opacity: 1; } to { opacity: .25; } }
+  #flash {
+    position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none;
+    transition: opacity .1s; z-index: 40;
+  }
+  .hud-itemhint {
+    position: absolute; top: 118px; left: 50%; transform: translateX(-50%);
+    font-size: 13px; color: rgba(255,255,255,.75); font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0,0,0,.8);
+  }
+
+  /* ---------- Menus ---------- */
+  #menu { z-index: 20; background: transparent; }
+  .menu-screen {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px;
+    background: linear-gradient(160deg, rgba(10,14,34,.88), rgba(24,10,44,.88));
+  }
+  .menu-title {
+    font-size: 72px; font-weight: 900; font-style: italic; color: #ffd23f;
+    -webkit-text-stroke: 2px #4d2e00; text-shadow: 0 8px 0 rgba(0,0,0,.35);
+    letter-spacing: 2px; margin-bottom: 4px;
+  }
+  .menu-sub { font-size: 18px; color: #9fb4e8; margin-bottom: 22px; font-weight: 600; }
+  .menu-heading { font-size: 40px; font-weight: 900; color: #fff; font-style: italic; margin-bottom: 8px;
+    text-shadow: 0 3px 0 rgba(0,0,0,.4); }
+  .menu-btn {
+    min-width: 340px; padding: 14px 34px; font-size: 24px; font-weight: 800;
+    font-family: var(--hud-font); color: #fff; background: rgba(255,255,255,.08);
+    border: 3px solid rgba(255,255,255,.35); border-radius: 14px; cursor: pointer;
+    transition: all .12s; text-align: center; font-style: italic;
+  }
+  .menu-btn:hover, .menu-btn.selected {
+    background: var(--accent); color: #222; border-color: #fff;
+    transform: scale(1.04) skewX(-2deg); box-shadow: 0 6px 24px rgba(255,210,63,.4);
+  }
+  .menu-btn.small { min-width: 220px; font-size: 18px; padding: 10px 22px; }
+  .menu-row { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 1100px; }
+  .card {
+    width: 220px; padding: 14px; border-radius: 14px; cursor: pointer;
+    background: rgba(255,255,255,.07); border: 3px solid rgba(255,255,255,.25);
+    transition: all .12s; text-align: center; color: #fff;
+  }
+  .card:hover, .card.selected {
+    border-color: var(--accent); background: rgba(255,210,63,.15); transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  .card h3 { font-size: 19px; margin: 8px 0 4px; font-style: italic; }
+  .card .desc { font-size: 12.5px; color: #aebde6; line-height: 1.35; }
+  .card canvas { border-radius: 8px; background: rgba(0,0,0,.3); }
+  .char-swatch { width: 74px; height: 74px; border-radius: 50%; margin: 4px auto; border: 4px solid rgba(255,255,255,.5); }
+  .stat-bars { margin-top: 8px; font-size: 10.5px; text-align: left; color: #9fb4e8; }
+  .stat-bars .bar { height: 5px; background: rgba(255,255,255,.15); border-radius: 3px; margin: 2px 0 5px; overflow: hidden; }
+  .stat-bars .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .menu-footer { position: absolute; bottom: 18px; left: 0; right: 0; text-align: center;
+    font-size: 13px; color: rgba(255,255,255,.55); font-weight: 600; }
+
+  /* ---------- Results ---------- */
+  .results-table {
+    background: rgba(10,14,34,.92); border: 3px solid rgba(255,255,255,.3); border-radius: 16px;
+    padding: 22px 34px; min-width: 460px;
+  }
+  .results-table h2 { color: #ffd23f; font-style: italic; text-align: center; margin-bottom: 14px; font-size: 34px; }
+  .results-table table { width: 100%; border-collapse: collapse; color: #fff; font-size: 19px; }
+  .results-table td { padding: 6px 12px; }
+  .results-table tr.player td { color: #ffd23f; font-weight: 900; }
+  .results-table td.pts { text-align: right; font-variant-numeric: tabular-nums; }
+  .results-table tr:nth-child(odd) { background: rgba(255,255,255,.05); }
+
+  #loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: #0b0e1a; color: #ffd23f; font-size: 28px; font-weight: 800; font-style: italic; z-index: 100;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="hud" class="layer hidden">
+  <div class="hud-lap" id="hudLap"></div>
+  <div class="hud-timer" id="hudTimer"></div>
+  <div class="hud-coins" id="hudCoins"></div>
+  <div class="hud-item hidden" id="hudItem"><span id="hudItemIcon"></span><span class="count hidden" id="hudItemCount"></span></div>
+  <div class="hud-itemhint hidden" id="hudItemHint">E — use &nbsp;•&nbsp; hold E — shield &nbsp;•&nbsp; S+E — throw back</div>
+  <div class="hud-pos" id="hudPos"></div>
+  <div class="hud-speed" id="hudSpeed"></div>
+  <canvas id="minimap" width="340" height="340"></canvas>
+  <div class="hud-center" id="hudCenter"></div>
+  <div class="hud-msg" id="hudMsg"></div>
+  <div class="hud-wrongway hidden" id="hudWrongWay">⚠ WRONG WAY ⚠</div>
+</div>
+<div id="flash"></div>
+<button class="hud-mute" id="muteBtn" title="Toggle Sound">🔊</button>
+<div id="speedLines"></div>
+<div id="touchControls">
+  <div class="touch-zone touch-stick-zone" id="touchStickZone">
+    <div class="touch-stick-base"></div>
+    <div class="touch-stick-knob" id="touchStickKnob"></div>
+  </div>
+  <div class="touch-zone touch-btn-zone">
+    <div class="touch-btn-row">
+      <div class="touch-btn brake" id="touchBrake">B</div>
+      <div class="touch-btn gas" id="touchGas">A</div>
+    </div>
+    <div class="touch-btn-row">
+      <div class="touch-btn-small" id="touchHop">HOP</div>
+      <div class="touch-btn-small" id="touchItem">ITEM</div>
+    </div>
+  </div>
+  <div class="touch-top-btns">
+    <div class="touch-btn-small" id="touchPause">⏸</div>
+  </div>
+</div>
+<div id="menu" class="layer interactive"></div>
+<div id="loading">LOADING…</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
