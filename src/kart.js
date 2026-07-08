@@ -160,12 +160,57 @@ export class Kart {
         }
         this.driftState = 'none'; this.driftCharge = 0; this.driftTier = 0;
       }
+    } else if (this.driftState === 'slide') {
+      // realistic handbrake slide: steering stays free (with extra
+      // authority) while the rear barely grips — the kart oversteers
+      // and must be caught with counter-steer like a real car
+      turn = steer * P.turnRate * this.stat.handling * speedFactor * P.hbSteerBonus;
+      const slipSigned = wrapAngle(this.heading - this.travel);
+      const slip = Math.abs(slipSigned);
+      // spark side follows the actual slide direction
+      if (Math.sign(slipSigned) !== 0) this.driftDir = Math.sign(slipSigned);
+
+      if (slip > 1.5 && Math.abs(this.speed) > 6) {
+        // overcooked it — past ~85 degrees the rear is gone: spin out
+        this.driftState = 'none'; this.driftCharge = 0; this.driftTier = 0;
+        this.spinOut(events);
+      } else {
+        // mini-turbo charges only while genuinely sideways
+        this.driftCharge += dt * P.hbChargeRate * clamp(slip / P.hbFullSlip, 0, 1);
+        const tiers = P.driftChargeTiers;
+        const newTier = this.driftCharge >= tiers[2] ? 3 : this.driftCharge >= tiers[1] ? 2 :
+                        this.driftCharge >= tiers[0] ? 1 : 0;
+        if (newTier > this.driftTier) {
+          this.driftTier = newTier;
+          events?.emit('driftTier', this, newTier);
+        }
+        if (!c.handbrake || stunned || Math.abs(this.speed) < P.hbMinSpeed * 0.5) {
+          // the payoff is only earned on a controlled, deliberate release —
+          // stalling out or getting hit forfeits it
+          const manualRelease = !c.handbrake && !stunned;
+          if (this.driftTier > 0 && manualRelease) {
+            const bTime = P.driftBoostTimes[this.driftTier - 1];
+            this.applyBoost(bTime, P.boostMult);
+            events?.emit('miniTurbo', this, this.driftTier);
+          }
+          this.driftState = 'none'; this.driftCharge = 0; this.driftTier = 0;
+        }
+      }
     } else {
       turn = steer * P.turnRate * this.stat.handling * speedFactor;
       if (this.speed < -0.5) turn = -turn; // reversing inverts steering
     }
     if (!this.grounded) turn *= P.airTurnMult;
     this.heading = wrapAngle(this.heading + turn * dt);
+
+    // handbrake slide initiation (no hop needed — realistic drift)
+    if (!locked && !stunned && c.handbrake && this.grounded &&
+        this.driftState === 'none' && Math.abs(this.speed) > P.hbMinSpeed) {
+      this.driftState = 'slide';
+      this.driftDir = Math.sign(steer) || 1;
+      this.driftCharge = 0; this.driftTier = 0;
+      events?.emit('driftStart', this);
+    }
 
     // hop initiation
     if (!locked && !stunned && c.hopPressed && this.grounded && this.driftState === 'none') {
@@ -197,10 +242,21 @@ export class Kart {
     const topSpeed = base * mult;
 
     const accelHeld = !locked && !stunned && c.accel;
-    const brakeHeld = !locked && !stunned && c.brake;
+    // below sliding speed the handbrake is just a brake
+    const brakeHeld = !locked && !stunned &&
+      (c.brake || (c.handbrake && this.driftState !== 'slide'));
 
     if (stunned) {
       this.speed = damp(this.speed, 0, 2.5, dt);
+    } else if (this.driftState === 'slide') {
+      // sliding: tires scrub speed off with slip angle; throttle still
+      // drives the kart but loses efficiency the more sideways it is
+      const slip = Math.abs(angleDiff(this.heading, this.travel));
+      if (accelHeld) {
+        const eff = 1 - P.hbAccelSlipLoss * clamp(slip / P.hbFullSlip, 0, 1);
+        this.speed = damp(this.speed, topSpeed * eff, P.accelRate * this.stat.accel * eff, dt);
+      }
+      this.speed = Math.max(0, this.speed - (P.hbDrag + P.hbScrub * slip) * dt);
     } else if (accelHeld && !brakeHeld) {
       const rate = (boosting ? P.boostAccelRate : P.accelRate) * this.stat.accel;
       if (this.speed > topSpeed + 1) {
@@ -211,7 +267,8 @@ export class Kart {
       }
     } else if (brakeHeld) {
       if (this.speed > 0.5) this.speed = Math.max(0, this.speed - P.brakeDecel * dt);
-      else this.speed = damp(this.speed, P.reverseMax * classScale, 1.6, dt);
+      else if (c.brake) this.speed = damp(this.speed, P.reverseMax * classScale, 1.6, dt);
+      else this.speed = damp(this.speed, 0, 6, dt); // handbrake alone never reverses
     } else {
       this.speed = damp(this.speed, 0, P.coastDecel / Math.max(6, Math.abs(this.speed)), dt);
     }
@@ -220,7 +277,8 @@ export class Kart {
     }
 
     // ---------- travel chases heading ----------
-    const gripRate = (this.driftState === 'drift' ? P.driftGripRate : P.gripRate) * track.grip;
+    const gripRate = (this.driftState === 'slide' ? P.hbGripRate :
+                      this.driftState === 'drift' ? P.driftGripRate : P.gripRate) * track.grip;
     this.travel = this.grounded
       ? dampAngle(this.travel, this.heading, gripRate, dt)
       : dampAngle(this.travel, this.heading, gripRate * 0.12, dt);

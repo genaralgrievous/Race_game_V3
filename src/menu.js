@@ -118,11 +118,14 @@ export class Menu {
         <b style="color:#ffd23f">S / ↓</b> — brake / reverse / back-throw modifier<br>
         <b style="color:#ffd23f">A D / ← →</b> — steer<br>
         <b style="color:#ffd23f">SPACE or SHIFT</b> — hop; hold + steer to <b>drift</b> (sparks = mini-turbo!)<br>
+        <b style="color:#ffd23f">C / L-CTRL</b> — <b>handbrake drift</b> (realistic): hold to break the rear loose,
+        counter-steer to hold the slide — overdo it and you'll spin!<br>
         <b style="color:#ffd23f">E / Q / ENTER</b> — use item (hold to drag as a shield)<br>
         <b style="color:#ffd23f">ESC / P</b> — pause<br>
-        <b style="color:#ffd23f">Gamepad</b> — stick steer, A gas, B brake, RB drift, LB item<br>
+        <b style="color:#ffd23f">Gamepad</b> — stick steer, A gas, B brake, RB drift, X handbrake, LB item<br>
         <span style="color:#9fb4e8">Pro tips: hold gas during "1" for a rocket start. Hop off ramp
-        crests for a trick boost. Tailgate rivals for a slipstream.</span>
+        crests for a trick boost. Tailgate rivals for a slipstream. Sideways
+        slip charges the handbrake mini-turbo — release clean to cash it in.</span>
       </div>`);
     const back = document.createElement('div');
     s.insertBefore(back, s.lastChild);

@@ -323,7 +323,7 @@ export class Race {
       this.audio.setEngine(
         clamp(Math.abs(p.speed) / (PHYS.maxSpeed * this.classScale * 1.3), 0, 1),
         p.boostTimer > 0 || p.bulletTimer > 0,
-        p.driftState === 'drift');
+        p.driftState === 'drift' || p.driftState === 'slide');
     }
   }
 
@@ -472,7 +472,8 @@ export class Race {
     const back = 8.5, height = 3.6;
     // follow travel direction a touch during drifts for the slide feel
     const camAngle = dampAngle(this._camAngle ?? k.heading,
-      k.driftState === 'drift' ? (k.heading + (k.travel - k.heading) * 0.5) : k.heading,
+      (k.driftState === 'drift' || k.driftState === 'slide')
+        ? (k.heading + (k.travel - k.heading) * 0.5) : k.heading,
       5.5, dt);
     this._camAngle = camAngle;
 

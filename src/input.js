@@ -26,7 +26,7 @@ export class Input {
     // --- touch state ---
     this._touch = {
       steer: 0, accel: false, brake: false,
-      hop: false, item: false, pause: false,
+      hop: false, handbrake: false, item: false, pause: false,
     };
     this._touchActive = false;
     this._stickOrigin = null;
@@ -120,6 +120,7 @@ export class Input {
     this._touchBtn('touchGas', 'accel');
     this._touchBtn('touchBrake', 'brake');
     this._touchBtn('touchHop', 'hop');
+    this._touchBtn('touchHandbrake', 'handbrake');
     this._touchBtn('touchItem', 'item');
     this._touchBtn('touchPause', 'pause');
   }

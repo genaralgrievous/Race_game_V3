@@ -23,9 +23,10 @@ Python is the only requirement (already on most Windows machines):
 | **S / ↓** | Brake / reverse (also: back-throw modifier for items) |
 | **A D / ← →** | Steer |
 | **SPACE or SHIFT** | Hop — hold + steer to **drift**; colored sparks (blue → orange → purple) mean a bigger **mini-turbo** on release |
+| **C / Left Ctrl** | **Handbrake drift** (realistic mode) — no hop needed: hold to break the rear loose, counter-steer to control the slide. Slip angle scrubs speed like real tires, sideways time charges the same mini-turbo tiers, and over-rotating past ~85° spins you out. Below sliding speed it's just a handbrake. |
 | **E / Q / ENTER** | Use item — **hold** to drag it behind you as a shield |
 | **ESC / P** | Pause |
-| **Gamepad** | Left stick steer, A gas, B brake, RB drift, LB item |
+| **Gamepad** | Left stick steer, A gas, B brake, RB drift, X handbrake, LB item |
 | **Touch** | On-screen controls appear automatically on touch devices |
 
 **Pro tips**

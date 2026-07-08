@@ -117,8 +117,9 @@ export class Effects {
 
   // Called per frame per kart: sparks, smoke, flames.
   kartAuras(kart, dt, time) {
+    const sliding = kart.driftState === 'drift' || kart.driftState === 'slide';
     // drift sparks at rear wheels
-    if (kart.driftState === 'drift' && kart.grounded && kart.driftTier > 0) {
+    if (sliding && kart.grounded && kart.driftTier > 0) {
       const color = DRIFT_COLORS[kart.driftTier - 1];
       for (let s = 0; s < 2; s++) {
         const side = s === 0 ? 1 : -1;
@@ -132,8 +133,8 @@ export class Effects {
         }
       }
     }
-    // drift smoke (any drift, even uncharged)
-    if (kart.driftState === 'drift' && kart.grounded && Math.random() < 0.5) {
+    // drift smoke (any drift, even uncharged; handbrake slides smoke harder)
+    if (sliding && kart.grounded && Math.random() < (kart.driftState === 'slide' ? 0.8 : 0.5)) {
       const a = kart.heading;
       this.small.spawn(
         kart.pos.x - Math.sin(a) * 1.2 + rand(-0.8, 0.8),
