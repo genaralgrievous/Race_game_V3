@@ -164,13 +164,23 @@ export class Kart {
       // realistic handbrake slide: steering stays free (with extra
       // authority) while the rear barely grips — the kart oversteers
       // and must be caught with counter-steer like a real car
-      turn = steer * P.turnRate * this.stat.handling * speedFactor * P.hbSteerBonus;
       const slipSigned = wrapAngle(this.heading - this.travel);
       const slip = Math.abs(slipSigned);
+      this._slideSlip = slip;
+      // Front tires saturate: steering deeper INTO the slide loses
+      // authority as the slip angle grows, while counter-steer keeps
+      // full bite. Together with the slip-proportional rear grip below
+      // this makes the slide settle at a stable ~30-40 degree angle
+      // instead of running away into a spin.
+      let authority = 1;
+      if (steer !== 0 && Math.sign(steer) === Math.sign(slipSigned || steer)) {
+        authority = Math.max(0.12, 1 - slip / P.hbAuthorityFalloff);
+      }
+      turn = steer * P.turnRate * this.stat.handling * speedFactor * P.hbSteerBonus * authority;
       // spark side follows the actual slide direction
       if (Math.sign(slipSigned) !== 0) this.driftDir = Math.sign(slipSigned);
 
-      if (slip > 1.5 && Math.abs(this.speed) > 6) {
+      if (slip > P.hbSpinSlip && Math.abs(this.speed) > 6) {
         // overcooked it — past ~85 degrees the rear is gone: spin out
         this.driftState = 'none'; this.driftCharge = 0; this.driftTier = 0;
         this.spinOut(events);
@@ -250,11 +260,15 @@ export class Kart {
       this.speed = damp(this.speed, 0, 2.5, dt);
     } else if (this.driftState === 'slide') {
       // sliding: tires scrub speed off with slip angle; throttle still
-      // drives the kart but loses efficiency the more sideways it is
+      // drives the kart (with reduced efficiency) but NEVER pulls speed
+      // down — all slide deceleration comes from the scrub itself
       const slip = Math.abs(angleDiff(this.heading, this.travel));
       if (accelHeld) {
         const eff = 1 - P.hbAccelSlipLoss * clamp(slip / P.hbFullSlip, 0, 1);
-        this.speed = damp(this.speed, topSpeed * eff, P.accelRate * this.stat.accel * eff, dt);
+        const target = topSpeed * eff;
+        if (this.speed < target) {
+          this.speed = damp(this.speed, target, P.accelRate * this.stat.accel * eff, dt);
+        }
       }
       this.speed = Math.max(0, this.speed - (P.hbDrag + P.hbScrub * slip) * dt);
     } else if (accelHeld && !brakeHeld) {
@@ -277,8 +291,11 @@ export class Kart {
     }
 
     // ---------- travel chases heading ----------
-    const gripRate = (this.driftState === 'slide' ? P.hbGripRate :
-                      this.driftState === 'drift' ? P.driftGripRate : P.gripRate) * track.grip;
+    // While sliding, the rear "catches" progressively: restoring grip
+    // grows with slip angle, which stabilizes the drift.
+    const gripRate = (this.driftState === 'slide'
+      ? P.hbGripRate + P.hbStabilize * (this._slideSlip || 0)
+      : this.driftState === 'drift' ? P.driftGripRate : P.gripRate) * track.grip;
     this.travel = this.grounded
       ? dampAngle(this.travel, this.heading, gripRate, dt)
       : dampAngle(this.travel, this.heading, gripRate * 0.12, dt);
