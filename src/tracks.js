@@ -11,8 +11,16 @@ import { CORAL } from './tracks/coral.js';
 import { MAGMA } from './tracks/magma.js';
 import { NEON } from './tracks/neon.js';
 import { CLOUDTOP } from './tracks/cloudtop.js';
+import { RIVIERA } from './tracks/riviera.js';
+import { SHORELINE } from './tracks/shoreline.js';
+import { NEOTOKYO } from './tracks/neotokyo.js';
+import { GIZA } from './tracks/giza.js';
 
-export const TRACKS = [MEADOW, DUNES, GLACIER, STARLIGHT, CORAL, MAGMA, NEON, CLOUDTOP];
+export const TRACKS = [
+  MEADOW, DUNES, GLACIER, STARLIGHT,
+  CORAL, MAGMA, NEON, CLOUDTOP,
+  RIVIERA, SHORELINE, NEOTOKYO, GIZA,
+];
 
 export const CUPS = [
   {
@@ -24,6 +32,11 @@ export const CUPS = [
     id: 'nebula',
     name: 'Nebula Cup',
     tracks: [CORAL.id, MAGMA.id, NEON.id, CLOUDTOP.id],
+  },
+  {
+    id: 'worldtour',
+    name: 'World Tour Cup',
+    tracks: [RIVIERA.id, SHORELINE.id, NEOTOKYO.id, GIZA.id],
   },
 ];
 

@@ -37,8 +37,8 @@ Python is the only requirement (already on most Windows machines):
 
 ## 🕹️ Modes
 
-- **Grand Prix** — two 4-track cups (Comet & Nebula). Points 15/12/10/9/8/7/6/5, standings between races, champion crowned at the end.
-- **Single Race** — any of the 8 tracks.
+- **Grand Prix** — three 4-track cups (Comet, Nebula & **World Tour**). Points 15/12/10/9/8/7/6/5, standings between races, champion crowned at the end. The World Tour Cup visits real-world-inspired circuits: **Riviera Royale** (Monaco street circuit, summer Mediterranean), **Shoreline Grand** (Long Beach, sunny beach), **Neo-Tokyo Loop** (Tokyo Shuto Expressway, cyberpunk night city) and **Giza Sunset Sprint** (the pyramids at dusk).
+- **Single Race** — any of the 12 tracks.
 - **Time Trial** — solo with 3 mushrooms; your best run is saved as a **ghost** you race against next time (stored in the browser).
 - **Balloon Battle** — arena combat, 3 balloons each, last kart floating (or most KOs at the timer) wins.
 

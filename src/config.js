@@ -38,9 +38,12 @@ export const PHYS = {
   hbDrag: 4.0,             // base decel while the handbrake is down
   hbScrub: 2.8,            // extra decel per radian of slip (tyres scrubbing)
   hbMinSpeed: 13,          // below this the handbrake just brakes
-  hbChargeRate: 1.05,      // mini-turbo charge per second at full slip
+  hbChargeRate: 1.2,       // mini-turbo charge per second at full slip
   hbFullSlip: 0.55,        // slip angle (rad) that counts as "full slip"
   hbAccelSlipLoss: 0.55,   // throttle efficiency lost at full slip
+  hbAuthorityFalloff: 1.1, // steering INTO the slide washes out toward this slip (front tires saturate)
+  hbStabilize: 1.6,        // extra restoring grip per radian of slip (rear catches the slide)
+  hbSpinSlip: 1.5,         // beyond this slip angle you've lost it => spin out
 
   // --- boosts ---
   boostMult: 1.32,         // top-speed multiplier while boosting
